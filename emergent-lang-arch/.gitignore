@@ -23,6 +23,9 @@ results/**/*.json
 # Wandb
 wandb/
 
+# Personal notes
+notes.md
+
 # OS
 .DS_Store
 Thumbs.db
