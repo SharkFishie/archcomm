@@ -83,8 +83,8 @@ paper is published. Check back here.
 
 ## Author
 
-[Your name] · [UOWD] · [your email or leave blank for now]
-
+Maria B. 
+mariabusygina05@gmail.com
 
 venv activation:
 .venv\Scripts\activate
