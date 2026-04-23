@@ -1,0 +1,9 @@
+egg-lib
+torch
+numpy
+scipy
+pandas
+matplotlib
+wandb
+pyyaml
+python-Levenshtein

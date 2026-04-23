@@ -1,0 +1,47 @@
+# Base configuration for emergent language experiments
+# Override per-run via CLI args or by copying and editing this file.
+
+experiment:
+  name: "baseline"
+  seed: 42
+  arch: "lstm"          # lstm | gru | transformer | mlp
+  device: "cpu"         # cuda | cpu
+
+# Object / game setup
+game:
+  n_objects: 100        # number of distinct meaning prototypes
+  n_features: 32        # dimensionality of object feature vectors
+  n_distractors: 4      # candidates = n_distractors + 1
+  n_train: 50000
+  n_val: 5000
+  n_test: 5000
+
+# Agent architecture
+agent:
+  input_dim: 32         # must match game.n_features
+  hidden_dim: 256
+  vocab_size: 50
+  max_len: 5
+  embed_dim: 64
+  # Transformer-specific
+  nhead: 4
+  num_layers: 2
+  # MLP-specific
+  mlp_layers: 3
+
+# Training
+training:
+  epochs: 100
+  batch_size: 256
+  lr: 1.0e-3
+  sender_entropy_coeff: 0.01
+  receiver_entropy_coeff: 0.001
+  grad_clip: 1.0
+  eval_every: 5         # evaluate every N epochs
+
+# Logging
+logging:
+  use_wandb: false
+  wandb_project: "emergent-lang-arch"
+  results_dir: "results"
+  log_messages: true    # save raw messages to disk at eval
