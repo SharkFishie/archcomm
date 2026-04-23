@@ -25,30 +25,15 @@ class TransformerSender(nn.Module):
 
 
 class TransformerReceiver(nn.Module):
-    """Receiver that attends to the message and scores candidate objects."""
+    """Receiver that scores candidate objects against EGG's encoded message hidden state."""
 
-    def __init__(self, input_dim, hidden_dim, vocab_size, embed_dim=64, nhead=4, num_layers=2):
+    def __init__(self, input_dim, hidden_dim, **kwargs):
         super().__init__()
-        self.embed = nn.Embedding(vocab_size, embed_dim)
-        self.pos_enc = _PositionalEncoding(embed_dim)
-        self.project = nn.Linear(embed_dim, hidden_dim)
-
-        decoder_layer = nn.TransformerEncoderLayer(
-            d_model=hidden_dim, nhead=nhead, dim_feedforward=hidden_dim * 4,
-            batch_first=True, dropout=0.1,
-        )
-        self.transformer = nn.TransformerEncoder(decoder_layer, num_layers=num_layers)
         self.fc_obj = nn.Linear(input_dim, hidden_dim)
-        self.pool = nn.AdaptiveAvgPool1d(1)
 
-    def forward(self, message, input, aux_input=None):
-        emb = self.pos_enc(self.embed(message.long()))          # (B, L, embed_dim)
-        h = torch.relu(self.project(emb))
-        h = self.transformer(h)                          # (B, L, hidden_dim)
-        h = h.mean(dim=1)                                # (B, hidden_dim)
-
-        obj_repr = torch.relu(self.fc_obj(input))        # (B, n_candidates, hidden_dim)
-        scores = torch.bmm(obj_repr, h.unsqueeze(-1)).squeeze(-1)
+    def forward(self, hidden, input, aux_input=None):
+        obj_repr = torch.relu(self.fc_obj(input))
+        scores = torch.bmm(obj_repr, hidden.unsqueeze(-1)).squeeze(-1)
         return scores
 
 
@@ -76,9 +61,6 @@ def build_transformer_agents(cfg):
     receiver_core = TransformerReceiver(
         input_dim=cfg["input_dim"],
         hidden_dim=cfg["hidden_dim"],
-        vocab_size=cfg["vocab_size"],
-        nhead=cfg.get("nhead", 4),
-        num_layers=cfg.get("num_layers", 2),
     )
 
     # Wrap with EGG RNN shells — transformer hidden state seeds the GRU decoder

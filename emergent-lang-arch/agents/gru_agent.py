@@ -15,19 +15,13 @@ class GRUSender(nn.Module):
 
 
 class GRUReceiver(nn.Module):
-    def __init__(self, input_dim, hidden_dim, output_dim, embed_dim=64, vocab_size=50):
+    def __init__(self, input_dim, hidden_dim, **kwargs):
         super().__init__()
-        self.embed = nn.Embedding(vocab_size, embed_dim)
-        self.gru = nn.GRU(embed_dim, hidden_dim, batch_first=True)
         self.fc_obj = nn.Linear(input_dim, hidden_dim)
 
-    def forward(self, message, input, aux_input=None):
-        emb = self.embed(message.long())
-        _, h = self.gru(emb)
-        h = h.squeeze(0)
-
+    def forward(self, hidden, input, aux_input=None):
         obj_repr = torch.relu(self.fc_obj(input))
-        scores = torch.bmm(obj_repr, h.unsqueeze(-1)).squeeze(-1)
+        scores = torch.bmm(obj_repr, hidden.unsqueeze(-1)).squeeze(-1)
         return scores
 
 
@@ -41,8 +35,6 @@ def build_gru_agents(cfg):
     receiver_core = GRUReceiver(
         input_dim=cfg["input_dim"],
         hidden_dim=cfg["hidden_dim"],
-        output_dim=cfg["n_distractors"] + 1,
-        vocab_size=cfg["vocab_size"],
     )
 
     sender = core.RnnSenderReinforce(

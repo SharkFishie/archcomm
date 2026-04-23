@@ -21,22 +21,17 @@ class LSTMSender(nn.Module):
 
 
 class LSTMReceiver(nn.Module):
-    def __init__(self, input_dim, hidden_dim, output_dim, embed_dim=64, vocab_size=50):
+    def __init__(self, input_dim, hidden_dim, **kwargs):
         super().__init__()
-        self.embed = nn.Embedding(vocab_size, embed_dim)
-        self.lstm = nn.LSTM(embed_dim, hidden_dim, batch_first=True)
+        # EGG's RnnReceiverDeterministic runs its own LSTM encoder and passes
+        # the final hidden state here — no re-encoding needed.
         self.fc_obj = nn.Linear(input_dim, hidden_dim)
-        self.fc_out = nn.Linear(hidden_dim, output_dim)
 
-    def forward(self, message, input, aux_input=None):
-        # message: (B, L) token ids
-        emb = self.embed(message.long())
-        _, (h, _) = self.lstm(emb)
-        h = h.squeeze(0)
-
-        # input: (B, n_candidates, input_dim)
-        obj_repr = torch.relu(self.fc_obj(input))   # (B, n_candidates, hidden_dim)
-        scores = torch.bmm(obj_repr, h.unsqueeze(-1)).squeeze(-1)  # (B, n_candidates)
+    def forward(self, hidden, input, aux_input=None):
+        # hidden: (B, hidden_dim) already encoded by EGG's RnnEncoder
+        # input:  (B, n_candidates, input_dim)
+        obj_repr = torch.relu(self.fc_obj(input))                    # (B, K, hidden_dim)
+        scores = torch.bmm(obj_repr, hidden.unsqueeze(-1)).squeeze(-1)  # (B, K)
         return scores
 
 
@@ -50,8 +45,6 @@ def build_lstm_agents(cfg):
     receiver_core = LSTMReceiver(
         input_dim=cfg["input_dim"],
         hidden_dim=cfg["hidden_dim"],
-        output_dim=cfg["n_distractors"] + 1,
-        vocab_size=cfg["vocab_size"],
     )
 
     sender = core.RnnSenderReinforce(
