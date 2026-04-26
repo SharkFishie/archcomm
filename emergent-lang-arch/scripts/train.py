@@ -93,6 +93,17 @@ def main():
 
     optimizer = torch.optim.Adam(game.parameters(), lr=cfg["lr"])
 
+    warmup_epochs = cfg.get("warmup_epochs", 0)
+    if warmup_epochs > 0:
+        scheduler = torch.optim.lr_scheduler.LinearLR(
+            optimizer,
+            start_factor=1.0 / warmup_epochs,
+            end_factor=1.0,
+            total_iters=warmup_epochs,
+        )
+    else:
+        scheduler = None
+
     # Optional wandb
     if cfg.get("use_wandb"):
         import wandb
@@ -128,7 +139,11 @@ def main():
         epoch_loss /= len(train_loader)
         epoch_acc /= len(train_loader)
 
-        print(f"Epoch {epoch}/{cfg['epochs']} | loss: {epoch_loss:.4f} | train_acc: {epoch_acc:.3f}", flush=True)
+        if scheduler is not None:
+            scheduler.step()
+
+        current_lr = optimizer.param_groups[0]["lr"]
+        print(f"Epoch {epoch}/{cfg['epochs']} | loss: {epoch_loss:.4f} | train_acc: {epoch_acc:.3f} | lr: {current_lr:.2e}", flush=True)
 
         # ----------------------------------------------------------- eval
         if epoch % cfg.get("eval_every", 5) == 0 or epoch == cfg["epochs"]:
