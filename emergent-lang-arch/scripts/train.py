@@ -73,7 +73,7 @@ def main():
     device = torch.device(cfg["device"] if torch.cuda.is_available() else "cpu")
     arch = cfg["arch"]
 
-    results_dir = Path(cfg["results_dir"]) / arch / f"seed_{cfg['seed']}"
+    results_dir = Path(cfg["results_dir"]) / arch / cfg["name"] / f"seed_{cfg['seed']}"
     results_dir.mkdir(parents=True, exist_ok=True)
 
     # ------------------------------------------------------------------ data

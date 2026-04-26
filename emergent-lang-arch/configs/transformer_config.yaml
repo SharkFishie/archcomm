@@ -2,7 +2,7 @@
 # Based on base_config.yaml
 
 experiment:
-  name: "transformer_tuned"
+  name: "tuned"
   seed: 42
   arch: "transformer"
   device: "cpu"         # cuda | cpu
