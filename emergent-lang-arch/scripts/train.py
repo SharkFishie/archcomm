@@ -6,6 +6,7 @@ Usage:
 """
 
 import argparse
+import json
 import os
 import random
 from pathlib import Path
@@ -101,6 +102,9 @@ def main():
     n_batches = len(train_loader)
     print(f"Starting training | arch={arch} | epochs={cfg['epochs']} | batches/epoch={n_batches}", flush=True)
     best_val_acc = 0.0
+    metrics_log = []
+    metrics_path = results_dir / "metrics.json"
+
     for epoch in range(1, cfg["epochs"] + 1):
         game.train()
         epoch_loss, epoch_acc = 0.0, 0.0
@@ -138,6 +142,18 @@ def main():
                 f"train_acc {epoch_acc:.3f} | val_acc {val_acc:.3f} | "
                 f"topo_rho {topo['rho']:.3f}"
             )
+
+            checkpoint = {
+                "epoch": epoch,
+                "train_acc": round(epoch_acc, 6),
+                "val_acc": round(val_acc, 6),
+                "topo_rho": round(topo["rho"], 6) if topo["rho"] == topo["rho"] else None,
+                "symbol_entropy": round(lang_stats["message_entropy"], 6),
+                "effective_vocab_size": lang_stats["effective_vocab_size"],
+            }
+            metrics_log.append(checkpoint)
+            with open(metrics_path, "w") as f:
+                json.dump(metrics_log, f, indent=2)
 
             if cfg.get("use_wandb"):
                 import wandb
