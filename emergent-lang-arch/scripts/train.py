@@ -18,8 +18,8 @@ from torch.utils.data import DataLoader
 
 import egg.core as core
 
-from agents import get_agents
-from games.referential_game import ReferentialDataset, build_game
+from agents import get_agents, get_agents_gs
+from games.referential_game import ReferentialDataset, build_game, build_game_gs
 from analysis import compute_topo_similarity, collect_messages, compute_all_metrics
 
 
@@ -30,6 +30,8 @@ def parse_args():
     p.add_argument("--epochs", type=int, default=None)
     p.add_argument("--seed", type=int, default=None)
     p.add_argument("--lr", type=float, default=None)
+    p.add_argument("--gumbel", action="store_true", help="Use Gumbel-Softmax instead of REINFORCE")
+    p.add_argument("--temperature", type=float, default=None, help="GS temperature (default from config)")
     p.add_argument("--use_wandb", action="store_true")
     return p.parse_args()
 
@@ -66,14 +68,21 @@ def main():
         cfg["seed"] = args.seed
     if args.lr:
         cfg["lr"] = args.lr
+    if args.temperature is not None:
+        cfg["temperature"] = args.temperature
     if args.use_wandb:
         cfg["use_wandb"] = True
+
+    gumbel = args.gumbel
 
     set_seed(cfg["seed"])
     device = torch.device(cfg["device"] if torch.cuda.is_available() else "cpu")
     arch = cfg["arch"]
 
-    results_dir = Path(cfg["results_dir"]) / arch / cfg["name"] / f"seed_{cfg['seed']}"
+    if gumbel:
+        results_dir = Path(cfg["results_dir"]) / f"{arch}_gs" / f"seed_{cfg['seed']}"
+    else:
+        results_dir = Path(cfg["results_dir"]) / arch / cfg["name"] / f"seed_{cfg['seed']}"
     results_dir.mkdir(parents=True, exist_ok=True)
 
     # ------------------------------------------------------------------ data
@@ -87,8 +96,12 @@ def main():
     val_loader = DataLoader(val_ds, batch_size=cfg["batch_size"], shuffle=False)
 
     # ------------------------------------------------------------------ model
-    sender, receiver = get_agents(arch, cfg)
-    game = build_game(sender, receiver, cfg)
+    if gumbel:
+        sender, receiver = get_agents_gs(arch, cfg)
+        game = build_game_gs(sender, receiver, cfg)
+    else:
+        sender, receiver = get_agents(arch, cfg)
+        game = build_game(sender, receiver, cfg)
     game = game.to(device)
 
     optimizer = torch.optim.Adam(game.parameters(), lr=cfg["lr"])
@@ -111,7 +124,8 @@ def main():
 
     # --------------------------------------------------------------- training
     n_batches = len(train_loader)
-    print(f"Starting training | arch={arch} | epochs={cfg['epochs']} | batches/epoch={n_batches}", flush=True)
+    mode = "gumbel-softmax" if gumbel else "reinforce"
+    print(f"Starting training | arch={arch} | mode={mode} | epochs={cfg['epochs']} | batches/epoch={n_batches}", flush=True)
     best_val_acc = 0.0
     metrics_log = []
     metrics_path = results_dir / "metrics.json"

@@ -62,12 +62,20 @@ def referential_loss(sender_input, message, receiver_input, receiver_output, lab
 
 
 def build_game(sender, receiver, cfg):
-    loss_fn = referential_loss
-    game = core.SenderReceiverRnnReinforce(
+    return core.SenderReceiverRnnReinforce(
         sender,
         receiver,
-        loss_fn,
+        referential_loss,
         sender_entropy_coeff=cfg.get("sender_entropy_coeff", 0.01),
         receiver_entropy_coeff=cfg.get("receiver_entropy_coeff", 0.001),
     )
-    return game
+
+
+def build_game_gs(sender, receiver, cfg):
+    """Gumbel-Softmax game — fully differentiable, no entropy coefficients needed."""
+    return core.SenderReceiverRnnGS(
+        sender,
+        receiver,
+        referential_loss,
+        length_cost=cfg.get("length_cost", 0.0),
+    )

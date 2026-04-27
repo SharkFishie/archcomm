@@ -69,12 +69,20 @@ def compute_topo_similarity(
 
 @torch.no_grad()
 def collect_messages(sender, dataloader, device):
-    """Run sender over dataloader and return (meanings, messages) arrays."""
+    """Run sender over dataloader and return (meanings, messages) arrays.
+
+    Handles both REINFORCE (message shape (B, L)) and Gumbel-Softmax
+    (message shape (B, L, V) — argmaxed to (B, L) for analysis).
+    """
     meanings_list, messages_list = [], []
     sender.eval()
     for sender_input, _labels, _receiver_input in dataloader:
         sender_input = sender_input.to(device)
-        message, _log_prob, _entropy = sender(sender_input)
+        out = sender(sender_input)
+        # REINFORCE sender returns (message, log_prob, entropy); GS sender returns message only
+        message = out[0] if isinstance(out, tuple) else out
+        if message.dim() == 3:          # GS: (B, L, vocab_size) → discrete token ids
+            message = message.argmax(-1)
         meanings_list.append(sender_input.cpu().numpy())
         messages_list.append(message.cpu().numpy())
     return np.concatenate(meanings_list), np.concatenate(messages_list)
