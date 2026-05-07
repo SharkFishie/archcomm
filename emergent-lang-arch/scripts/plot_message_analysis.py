@@ -26,9 +26,10 @@ LABELS = {
     "mlp": "MLP",
 }
 
-SIMILAR_THRESHOLD = 0.3
-DISSIMILAR_THRESHOLD = 0.8
+SIMILAR_THRESHOLD = 0.5
+DISSIMILAR_THRESHOLD = 0.6
 N_PAIRS = 10
+MIN_PAIRS = 5
 N_EXAMPLES = 3
 
 
@@ -90,8 +91,9 @@ def analyse_arch(arch: str, results_dir: Path, seed: int, epoch: int):
     similar_pairs = find_pairs(meanings, rng, N_PAIRS, SIMILAR_THRESHOLD, below=True)
     dissimilar_pairs = find_pairs(meanings, rng, N_PAIRS, DISSIMILAR_THRESHOLD, below=False)
 
-    if not similar_pairs or not dissimilar_pairs:
-        print(f"  [{arch}] Could not find enough pairs — skipping.")
+    if len(similar_pairs) < MIN_PAIRS or len(dissimilar_pairs) < MIN_PAIRS:
+        print(f"  [{arch}] Could not find enough pairs (similar={len(similar_pairs)}, "
+              f"dissimilar={len(dissimilar_pairs)}) — skipping.")
         return None
 
     sim_overlaps = [symbol_overlap(messages[i], messages[j]) for i, j in similar_pairs]
@@ -124,8 +126,8 @@ def print_examples(result: dict, n: int = N_EXAMPLES):
     print(f"  {LABELS[arch]}")
     print(f"  {'─'*56}")
 
-    for label, pairs in [("SIMILAR pairs (cosine < 0.3)", result["similar_pairs"][:n]),
-                          ("DISSIMILAR pairs (cosine > 0.8)", result["dissimilar_pairs"][:n])]:
+    for label, pairs in [("SIMILAR pairs (cosine < 0.5)", result["similar_pairs"][:n]),
+                          ("DISSIMILAR pairs (cosine > 0.6)", result["dissimilar_pairs"][:n])]:
         print(f"\n  {label}:")
         for i, j in pairs:
             dist = cosine(meanings[i], meanings[j])
@@ -148,7 +150,7 @@ def main():
         result = analyse_arch(arch, results_dir, args.seed, args.epoch)
         if result is None:
             print(f"  Skipping {arch} — files not found at "
-                  f"results/{arch}/seed_{args.seed}/messages_epoch{args.epoch}.npy")
+                  f"{results_dir}/{arch}/seed_{args.seed}/messages_epoch{args.epoch}.npy")
             continue
 
         print(f"  mean overlap (similar pairs):    {result['mean_overlap_similar_pairs']:.3f}")
